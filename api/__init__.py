@@ -28,8 +28,10 @@ def create_app():
     # Initialize Extensions
     db.init_app(app)
     jwt = JWTManager(app)
-    
-    # (We will register blueprints/routes here in Stage 2)
+
+    #Blueprint registration
+    from .routes import auth_bp
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
 
     @app.route('/')
     def health_check():
