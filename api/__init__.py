@@ -2,6 +2,7 @@ import os
 from flask import Flask
 from dotenv import load_dotenv
 from flask_jwt_extended import JWTManager
+from flask_cors import CORS
 from .models import db
 
 # Load environment variables from .env file (if running locally)
@@ -9,6 +10,7 @@ load_dotenv()
 
 def create_app():
     app = Flask(__name__)
+    CORS(app)
     
     # Configuration
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-key-fallback')
