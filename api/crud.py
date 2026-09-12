@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import extract
 from .models import db, Category, Expense
 from datetime import datetime
+from sqlalchemy import func
 
 # Define Blueprints
 category_bp = Blueprint('category', __name__)
@@ -150,3 +151,57 @@ def delete_expense(expense_id):
     db.session.delete(expense)
     db.session.commit()
     return jsonify({"message": "Expense deleted successfully"}), 200
+
+# ==========================================
+# ANALYTICS / DONUT CHART
+# ==========================================
+
+@expense_bp.route('/analytics/donut', methods=['GET'])
+@jwt_required()
+def get_donut_chart_data():
+    user_id = get_jwt_identity()
+    
+    month = request.args.get('month', type=int)
+    year = request.args.get('year', type=int)
+    
+    # Base query: Join Expense and Category, sum the values, group by Category
+    query = db.session.query(
+        Category.category_name,
+        Category.category_emoji,
+        func.sum(Expense.value).label('total_value')
+    ).join(Expense, Expense.category_id == Category.category_id)\
+     .filter(Expense.user_id == user_id)
+    
+    # Apply date filters if provided
+    if year:
+        query = query.filter(extract('year', Expense.date) == year)
+    if month:
+        query = query.filter(extract('month', Expense.date) == month)
+        
+    # Group by the category fields to get aggregate sums
+    results = query.group_by(Category.category_name, Category.category_emoji).all()
+    
+    # Calculate the grand total for the timeframe
+    grand_total = sum(row.total_value for row in results)
+    
+    # Format the data cleanly for the React frontend
+    chart_data = []
+    for row in results:
+        # Convert total_value from BigInteger format to a standard int
+        category_total = int(row.total_value) 
+        percentage = round((category_total / grand_total) * 100, 2) if grand_total > 0 else 0
+        
+        chart_data.append({
+            "category_name": row.category_name,
+            "category_emoji": row.category_emoji,
+            "total_value": category_total,
+            "percentage": percentage
+        })
+        
+    # Sort the chart data so the largest expenses appear first in the donut chart
+    chart_data.sort(key=lambda x: x['total_value'], reverse=True)
+    
+    return jsonify({
+        "grand_total": int(grand_total) if grand_total else 0,
+        "chart_data": chart_data
+    }), 200
