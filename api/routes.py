@@ -3,7 +3,7 @@ import requests
 from flask import Blueprint, request, jsonify, url_for
 from flask_jwt_extended import create_access_token
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
-from .models import db, User
+from .models import db, User, Category
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -57,7 +57,26 @@ def signup():
     new_user.set_password(data.get('password'))
     
     db.session.add(new_user)
-    db.session.commit()
+    db.session.commit() # The user now has a user_id
+    
+    # Create 5 initial categories
+    default_categories = [
+        {"name": "Food", "emoji": "🍔"},
+        {"name": "Transport", "emoji": "🚕"},
+        {"name": "Shopping", "emoji": "🛍️"},
+        {"name": "Entertainment", "emoji": "🍿"},
+        {"name": "Study", "emoji": "📚"}
+    ]
+    
+    for cat in default_categories:
+        new_category = Category(
+            category_name=cat["name"],
+            category_emoji=cat["emoji"],
+            user_id=new_user.user_id
+        )
+        db.session.add(new_category)
+        
+    db.session.commit() # Save the new categories
     
     token = generate_verification_token(new_user.email)
     verify_url = url_for('auth.verify_email', token=token, _external=True)
