@@ -33,6 +33,10 @@ def create_app():
     from .routes import auth_bp
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
 
+    from .crud import category_bp, expense_bp
+    app.register_blueprint(category_bp, url_prefix='/api/categories')
+    app.register_blueprint(expense_bp, url_prefix='/api/expenses')
+
     @app.route('/')
     def health_check():
         return {"status": "ok", "message": "Expense API is running"}
